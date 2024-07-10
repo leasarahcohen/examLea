@@ -1,35 +1,37 @@
 <template>
-    <lightning-card title="Shopping Cart" icon-name="custom:custom63">
-        <div class="slds-m-around_medium">
-            <template if:true={products}>
-                <template for:each={products} for:item="product">
-                    <div key={product.id} class="slds-box slds-m-bottom_small">
-                        <lightning-layout>
-                            <lightning-layout-item size="4">
-                                <img src={product.image} alt={product.title} class="product-image"/>
-                            </lightning-layout-item>
-                            <lightning-layout-item size="6">
-                                <h2>{product.title}</h2>
-                                <p>${product.price}</p>
-                                <div class="slds-m-top_small">
-                                    <lightning-button-icon icon-name="utility:dash" onclick={decreaseQuantity} data-id={product.id}></lightning-button-icon>
-                                    <lightning-input type="number" value={product.quantity} readonly class="quantity-input"></lightning-input>
-                                    <lightning-button-icon icon-name="utility:add" onclick={increaseQuantity} data-id={product.id}></lightning-button-icon>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="row">
+                    <template for:each={products} for:item="product">
+                        <div key={product.id} class="col-md-4 mb-4">
+                            <div class="card h-100">
+                                <img src={product.image} alt={product.title} class="card-img-top"/>
+                                <div class="card-body">
+                                    <h5 class="card-title">{product.title}</h5>
+                                    <p class="card-text">${product.price}</p>
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepend">
+                                            <span class="input-group-text">Quantity</span>
+                                        </div>
+                                        <input type="number" value={product.quantity} min="1" class="form-control quantity-selector" data-id={product.id} onchange={handleQuantityChange}/>
+                                    </div>
+                                    <button class="btn btn-danger btn-block" data-id={product.id} onclick={removeProduct}>Remove</button>
                                 </div>
-                                <lightning-button variant="destructive" label="Remove" onclick={removeProduct} data-id={product.id} class="slds-m-top_small"></lightning-button>
-                            </lightning-layout-item>
-                        </lightning-layout>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title">Summary</h4>
+                        <p class="card-text">Shipping: $10</p>
+                        <p class="card-text">Total: ${calculateTotal}</p>
                     </div>
-                </template>
-            </template>
-            <template if:false={products}>
-                <p>Loading products...</p>
-            </template>
+                </div>
+            </div>
         </div>
-        <div class="slds-m-around_medium slds-border_top">
-            <h3>Cart Summary</h3>
-            <p>Shipping: $<span>{shippingValue}</span></p>
-            <p>Total: $<span>{totalPrice}</span></p>
-        </div>
-    </lightning-card>
+    </div>
 </template>
