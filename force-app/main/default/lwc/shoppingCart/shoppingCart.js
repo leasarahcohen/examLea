@@ -1,75 +1,105 @@
-import { LightningElement, track } from 'lwc';
-import { loadStyle } from 'lightning/platformResourceLoader';
-import BOOTSTRAP from '@salesforce/resourceUrl/bootstrap';
+import { LightningElement, track, wire } from 'lwc';
+import getProduct from '@salesforce/apex/ProductController.getProduct';
 
 export default class ShoppingCart extends LightningElement {
-    @track products = [];
-    @track cart = [];
+    @track product;
+    @track quantity = 1;
+    @track shipping = 5; // Initial shipping cost
+    @track total = 0;
 
-    connectedCallback() {
-        this.fetchProducts();
-        this.loadCart();
-        this.loadBootstrap();
-    }
-
-    loadBootstrap() {
-        loadStyle(this, BOOTSTRAP)
-            .then(() => {
-                console.log('Bootstrap loaded successfully');
-            })
-            .catch(error => {
-                console.error('Error loading Bootstrap:', error);
-            });
-    }
-
-    async fetchProducts() {
-        try {
-            const response = await fetch('https://fakestoreapi.com/products');
-            const data = await response.json();
-            this.products = data.map(product => ({ ...product, quantity: 1 }));
-        } catch (error) {
-            console.error('Error fetching products:', error);
+    @wire(getProduct)
+wiredProduct({ error, data }) {
+    if (data) {
+        console.log('Raw product data:', data);
+        let price = parseFloat(data.price);
+        if (isNaN(price)) {
+            price = 0; // Default to zero or handle differently based on requirements
+            console.warn('Invalid price format:', data.price);
         }
+        console.log('Parsed product price:', price);
+        this.product = { ...data, price };
+        console.log('Product fetched:', this.product);
+        this.calculateTotal();
+    } else if (error) {
+        console.error('Error fetching product:', error);
     }
+}
+
 
     handleQuantityChange(event) {
-        const productId = event.target.dataset.id;
-        const quantity = event.target.value;
-        const product = this.cart.find(p => p.id == productId);
-        if (product) {
-            product.quantity = quantity;
-        } else {
-            this.cart.push({ id: productId, quantity });
+        this.quantity = parseInt(event.target.value, 10);
+        if (isNaN(this.quantity) || this.quantity < 1) {
+            this.quantity = 1;
         }
-        this.saveCart();
+        console.log('Quantity changed:', this.quantity);
+        this.calculateTotal();
+    }
+    
+
+    increaseQuantity() {
+        this.quantity += 1;
+        console.log('Quantity increased:', this.quantity);
+        this.calculateTotal();
     }
 
-    removeProduct(event) {
-        const productId = event.target.dataset.id;
-        this.cart = this.cart.filter(p => p.id != productId);
-        this.saveCart();
-    }
-
-    saveCart() {
-        localStorage.setItem('cart', JSON.stringify(this.cart));
-    }
-
-    loadCart() {
-        const cart = localStorage.getItem('cart');
-        if (cart) {
-            this.cart = JSON.parse(cart);
+    decreaseQuantity() {
+        if (this.quantity > 1) {
+            this.quantity -= 1;
+            console.log('Quantity decreased:', this.quantity);
+            this.calculateTotal();
         }
     }
 
-    get calculateTotal() {
+    calculateTotal() {
+        if (this.product && !isNaN(this.product.price)) {
+            console.log('price:', this.product.price);
+            console.log('quantity:',  this.quantity);
+            console.log('shipping:', this.shipping);
+
+            let total = this.shipping * this.quantity ;
+            this.total = total.toFixed(2); // Format total to 2 decimal places
+            console.log('Total calculated:', this.total);
+            this.saveCartState();
+        }
+    }
+
+    handleRemove() {
+        this.product = null;
+        this.quantity = 0;
+        console.log('Product removed');
+        this.updateCart();
+    }
+
+    updateCart() {
         let total = 0;
-        this.cart.forEach(item => {
-            const product = this.products.find(p => p.id == item.id);
-            if (product) {
-                total += product.price * item.quantity;
-            }
-        });
-        const shipping = this.cart.length > 4 ? 20 : 10;
-        return total + shipping;
+        if (this.product && !isNaN(this.product.price)) {
+            total += this.product.price * this.quantity;
+            console.log('Product price:', this.product.price);
+        }
+        this.shipping = this.quantity > 4 ? 10 : 5;
+        this.total = total + this.shipping;
+        console.log('Total calculated:', this.total);
+        this.saveCartState();
     }
+    
+
+    saveCartState() {
+        const cartState = {
+            product: this.product,
+            quantity: this.quantity
+        };
+        localStorage.setItem('cartState', JSON.stringify(cartState));
+        console.log('Cart state saved:', cartState);
+    }
+
+    connectedCallback() {
+        const savedCartState = JSON.parse(localStorage.getItem('cartState'));
+        if (savedCartState && savedCartState.product) {
+            this.product = savedCartState.product;
+            this.quantity = savedCartState.quantity || 1; // Default to 1 if quantity not set
+            console.log('Cart state loaded:', savedCartState);
+            this.calculateTotal();
+        }
+    }
+    
 }
